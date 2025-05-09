@@ -80,22 +80,31 @@ def _best_match_recordlinkage(i: int, master_keys: pd.Series, using_keys: pd.Ser
 def fuzzy_match(master_df: pd.DataFrame, using_df: pd.DataFrame, keys: List[str]) -> pd.DataFrame:
     _validate_keys(master_df, keys)
     _validate_keys(using_df, keys)
+
     master_keys = _build_key_series(master_df, keys)
     using_keys = _build_key_series(using_df, keys)
 
     results = []
     for i, key_string in master_keys.items():
-        scores = [
-            _best_match_rapidfuzz(key_string, using_keys),
-            _best_match_textdistance(key_string, using_keys),
-            _best_match_recordlinkage(i, master_keys, using_keys),
-        ]
-        using_idx, score, method = max(scores, key=lambda x: x[1])
+        # compute scores for all three methods
+        idx_r, score_r, _ = _best_match_rapidfuzz(key_string, using_keys)
+        idx_t, score_t, _ = _best_match_textdistance(key_string, using_keys)
+        idx_l, score_l, _ = _best_match_recordlinkage(i, master_keys, using_keys)
+        # identify best overall
+        using_idx, best_score, method = max(
+            [(idx_r, score_r, "rapidfuzz"),
+             (idx_t, score_t, "textdistance"),
+             (idx_l, score_l, "recordlinkage")],
+            key=lambda x: x[1]
+        )
         results.append({
             "master_index": i,
             "using_index": using_idx,
-            "best_score": round(score, 2),
+            "best_score": round(best_score, 2),
             "method": method,
+            "rapid_score": round(score_r, 2),
+            "text_score": round(score_t, 2),
+            "link_score": round(score_l, 2),
         })
 
     link = pd.DataFrame(results).set_index("master_index")
