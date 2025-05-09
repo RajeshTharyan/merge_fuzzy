@@ -139,11 +139,13 @@ if master_file and using_file:
                     from io import BytesIO
                     buffer = BytesIO()
                     matched.to_excel(buffer, index=False)
+                    buffer.seek(0)
                     st.download_button("Download Excel", data=buffer.getvalue(), file_name=filename)
                 elif file_format == "dta":
                     from io import BytesIO
                     buffer = BytesIO()
                     matched.to_stata(buffer, write_index=False)
+                    buffer.seek(0)
                     st.download_button("Download Stata", data=buffer.getvalue(), file_name=filename)
         else:
             st.info("Please select one or more key variables.")
