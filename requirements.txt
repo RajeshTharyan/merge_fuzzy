@@ -6,3 +6,4 @@ textdistance>=4.2.0
 recordlinkage==0.16.0
 openpyxl>=3.0.0
 pyreadstat>=1.1.0
+name-matching>=0.8.12
