@@ -102,39 +102,42 @@ def fuzzy_match(master_df: pd.DataFrame, using_df: pd.DataFrame, keys: List[str]
 
     results = []
     for i, key_string in master_keys.items():
-        # compute scores for all four methods
+        # compute scores and indices for all four methods
         idx_r, score_r, _ = _best_match_rapidfuzz(key_string, using_keys)
         idx_t, score_t, _ = _best_match_textdistance(key_string, using_keys)
         idx_l, score_l, _ = _best_match_recordlinkage(i, master_keys, using_keys)
         idx_n, score_n, _ = _best_match_name_matching(i, master_keys, using_keys)
-        # identify best overall
-        using_idx, best_score, method = max(
-            [
-                (idx_r, score_r, "rapidfuzz"),
-                (idx_t, score_t, "textdistance"),
-                (idx_l, score_l, "recordlinkage"),
-                (idx_n, score_n, "name_matching"),
-            ],
-            key=lambda x: x[1],
-        )
+
+        # get the matched values for each method (handle NA gracefully)
+        match_val_r = using_keys.get(idx_r, pd.NA)
+        match_val_t = using_keys.get(idx_t, pd.NA)
+        match_val_l = using_keys.get(idx_l, pd.NA)
+        match_val_n = using_keys.get(idx_n, pd.NA)
+
         results.append(
             {
                 "master_index": i,
-                "using_index": using_idx,
-                "best_score": round(best_score, 2),
-                "method": method,
+
+                "rapid_index": idx_r,
                 "rapid_score": round(score_r, 2),
+                "rapid_match": match_val_r,
+
+                "text_index": idx_t,
                 "text_score": round(score_t, 2),
+                "text_match": match_val_t,
+
+                "link_index": idx_l,
                 "link_score": round(score_l, 2),
+                "link_match": match_val_l,
+
+                "name_index": idx_n,
                 "name_score": round(score_n, 2),
+                "name_match": match_val_n,
             }
         )
 
     link = pd.DataFrame(results).set_index("master_index")
     merged = master_df.join(link, how="left")
-    merged = merged.merge(
-        using_df.add_prefix("using_"), left_on="using_index", right_index=True, how="left"
-    )
     return merged
 
 # ─────────────────────────────────────────────────────────────────────────────
