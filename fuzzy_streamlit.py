@@ -69,7 +69,10 @@ def _best_match_recordlinkage(i: int, master_keys: pd.Series, using_keys: pd.Ser
     best_pair = scores.idxmax()
     return best_pair[1], scores.loc[best_pair] * 100, "recordlinkage"
 
-def _best_match_name_matching(i: int, master_keys: pd.Series, using_keys: pd.Series):
+# Add this global variable to store the selected metrics
+selected_distance_metrics = None
+
+def _best_match_name_matching(i: int, master_keys: pd.Series, using_keys: pd.Series, distance_metrics=None):
     # Prepare the dataframes
     master_single = master_keys.iloc[[i]].to_frame(name="key")
     using_df = using_keys.to_frame(name="key")
@@ -78,7 +81,8 @@ def _best_match_name_matching(i: int, master_keys: pd.Series, using_keys: pd.Ser
     matcher = NameMatcher(number_of_matches=1, top_n=1, verbose=False)
     
     # Optionally set distance metrics if you want
-    # matcher.set_distance_metrics(['bag', 'typo', 'refined_soundex'])
+    if distance_metrics:
+        matcher.set_distance_metrics(distance_metrics)
     
     # Load and process the master data (the universe to match against)
     matcher.load_and_process_master_data(column='key', df_matching_data=using_df, transform=True)
@@ -94,7 +98,7 @@ def _best_match_name_matching(i: int, master_keys: pd.Series, using_keys: pd.Ser
 # ─────────────────────────────────────────────────────────────────────────────
 # Core fuzzy matcher
 # ─────────────────────────────────────────────────────────────────────────────
-def fuzzy_match(master_df: pd.DataFrame, using_df: pd.DataFrame, keys: List[str]) -> pd.DataFrame:
+def fuzzy_match(master_df: pd.DataFrame, using_df: pd.DataFrame, keys: List[str], distance_metrics=None) -> pd.DataFrame:
     _validate_keys(master_df, keys)
     _validate_keys(using_df, keys)
     master_keys = _build_key_series(master_df, keys)
@@ -106,7 +110,7 @@ def fuzzy_match(master_df: pd.DataFrame, using_df: pd.DataFrame, keys: List[str]
         idx_r, score_r, _ = _best_match_rapidfuzz(key_string, using_keys)
         idx_t, score_t, _ = _best_match_textdistance(key_string, using_keys)
         idx_l, score_l, _ = _best_match_recordlinkage(i, master_keys, using_keys)
-        idx_n, score_n, _ = _best_match_name_matching(i, master_keys, using_keys)
+        idx_n, score_n, _ = _best_match_name_matching(i, master_keys, using_keys, distance_metrics)
 
         # get the matched values for each method (handle NA gracefully)
         match_val_r = using_keys.get(idx_r, pd.NA)
@@ -151,6 +155,12 @@ with st.sidebar:
     using_file = st.file_uploader(
         "Upload USING file", type=["csv", "xlsx", "xls", "dta"]
     )
+    # Add a multiselect for distance metrics
+    selected_distance_metrics = st.multiselect(
+        "Select distance metrics for NameMatcher (default: all)",
+        ["bag", "typo", "refined_soundex"],
+        default=["bag", "typo", "refined_soundex"]
+    )
 
 if master_file and using_file:
     try:
@@ -164,7 +174,7 @@ if master_file and using_file:
 
         if selected_keys:
             if st.button("Run Fuzzy Match"):
-                matched = fuzzy_match(master_df, using_df, selected_keys)
+                matched = fuzzy_match(master_df, using_df, selected_keys, selected_distance_metrics)
                 st.success("Fuzzy matching complete.")
                 st.dataframe(matched.head(50))
 
