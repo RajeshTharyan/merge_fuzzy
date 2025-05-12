@@ -11,6 +11,20 @@ st.set_page_config(page_title="Fuzzy Matcher", layout="centered")
 st.title("Fuzzy Dataset Matcher")
 st.markdown("By: **Prof. Rajesh Tharyan**")
 
+st.markdown("""
+**What does this app do?**
+
+This app allows you to perform fuzzy matching between two datasets using multiple algorithms. The algorithms used are RapidFuzz, TextDistance, RecordLinkage, and NameMatcher.
+You can upload a "MASTER" file and a "USING" file, select the key columns to match on, and compare results from different fuzzy matching methods.
+
+**How to use:**
+1. Upload your MASTER and USING files in the sidebar (supported formats: CSV, Excel, Stata).
+2. Select the key columns that exist in both datasets for matching.
+3. (Optional) Choose distance metrics for the NameMatcher algorithm.
+4. Click "Run Fuzzy Match" to see the results.
+5. Download the matched results in your preferred format (CSV, Excel, Stata).
+""")
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Utility helpers
 # ─────────────────────────────────────────────────────────────────────────────
@@ -78,7 +92,7 @@ def _best_match_name_matching(i: int, master_keys: pd.Series, using_keys: pd.Ser
     using_df = using_keys.to_frame(name="key")
     
     # Initialize the matcher
-    matcher = NameMatcher(number_of_matches=1, top_n=1, verbose=False)
+    matcher = NameMatcher(number_of_matches=1, top_n=1, legal_suffixes=True, common_words=False, verbose=False)
     
     # Optionally set distance metrics if you want
     if distance_metrics:
@@ -175,9 +189,13 @@ if master_file and using_file:
         if selected_keys:
             if st.button("Run Fuzzy Match"):
                 matched = fuzzy_match(master_df, using_df, selected_keys, selected_distance_metrics)
+                st.session_state['matched'] = matched  # Store in session state
                 st.success("Fuzzy matching complete.")
                 st.dataframe(matched.head(50))
 
+            # Show download options if results exist
+            if 'matched' in st.session_state:
+                matched = st.session_state['matched']
                 file_format = st.selectbox(
                     "Choose format to download", ["csv", "xlsx", "dta"]
                 )
@@ -185,25 +203,23 @@ if master_file and using_file:
 
                 if file_format == "csv":
                     st.download_button(
-                        "Download CSV", matched.to_csv(index=False), file_name=filename
+                        "Download Results", matched.to_csv(index=False), file_name=filename
                     )
                 elif file_format == "xlsx":
                     from io import BytesIO
-
                     buffer = BytesIO()
                     matched.to_excel(buffer, index=False)
                     buffer.seek(0)
                     st.download_button(
-                        "Download Excel", data=buffer.getvalue(), file_name=filename
+                        "Download Results", data=buffer.getvalue(), file_name=filename, mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     )
                 elif file_format == "dta":
                     from io import BytesIO
-
                     buffer = BytesIO()
                     matched.to_stata(buffer, write_index=False)
                     buffer.seek(0)
                     st.download_button(
-                        "Download Stata", data=buffer.getvalue(), file_name=filename
+                        "Download Results", data=buffer.getvalue(), file_name=filename, mime="application/octet-stream"
                     )
         else:
             st.info("Please select one or more key variables.")
