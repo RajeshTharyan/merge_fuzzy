@@ -1,0 +1,32 @@
+# Bytecode / packaging
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Tests / coverage
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Virtualenvs
+.venv/
+venv/
+env/
+
+# Secrets and local env
+.env
+.env.*
+.streamlit/secrets.toml
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
+*.swp
